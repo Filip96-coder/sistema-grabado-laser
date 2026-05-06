@@ -644,7 +644,7 @@ Usuario (navegador)
 
 | Servicio | URL | Estado |
 |---|---|---|
-| Frontend | URL de Vercel del proyecto | Activo |
+| Frontend | `https://sistema-grabado-laser-1ychfoedv-filip96-coders-projects.vercel.app/ordenes` | Activo |
 | Backend API | `https://api-grabados-backend.onrender.com/api` | Activo |
 | Base de datos | MongoDB Atlas (clúster en la nube) | Activo |
 
