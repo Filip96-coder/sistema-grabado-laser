@@ -26,6 +26,7 @@
 8. [Flujo de Datos Completo](#8-flujo-de-datos-completo)
 9. [Decisiones de Diseño](#9-decisiones-de-diseño)
 10. [Comandos de Referencia](#10-comandos-de-referencia)
+11. [Despliegue Final](#11-despliegue-final)
 
 ---
 
@@ -563,3 +564,88 @@ curl http://localhost:3000/api/ordenes
 # Obtener informe XML
 curl http://localhost:3000/api/informes/operacion
 ```
+
+---
+
+## 11. Despliegue Final
+
+### ¿Qué se hizo?
+
+Se realizó la transición de un entorno de desarrollo local a una **arquitectura FullStack distribuida en la nube**, compuesta por tres pilares:
+
+| Pilar | Plataforma | Acción |
+|---|---|---|
+| **Backend (API)** | Render | Se desplegó el servidor Node.js configurando el entorno de ejecución y gestionando las variables de entorno para la conexión segura a la base de datos |
+| **Frontend (SPA)** | Vercel | Se desplegó la aplicación Angular configurando reglas de redirección para evitar errores de navegación y conectar con el backend de forma transparente |
+| **Base de Datos** | MongoDB Atlas | Se migró el almacenamiento a un clúster profesional configurando la IP Access List para permitir conexiones globales desde los servidores dinámicos de Render |
+
+**Integración:** Los tres servicios se conectan mediante un proxy definido en `vercel.json` que permite al frontend consultar órdenes y generar informes XML sin exponer directamente la URL del backend.
+
+---
+
+### ¿Para qué se hizo?
+
+El propósito principal fue **profesionalizar la operación del emprendimiento de grabado láser**:
+
+- **Persistencia de Datos:** Las órdenes de clientes se guardan permanentemente en la nube y no se pierden al cerrar el programa o reiniciar el servidor.
+- **Accesibilidad Móvil:** El sistema es accesible desde cualquier dispositivo con internet — útil para consultar el estado de los trabajos en campo (material, potencia, velocidad) sin necesidad de estar en el computador.
+- **Automatización Administrativa:** La generación del informe XML con cálculos de totales y porcentajes de avance facilita el seguimiento contable y operativo del negocio.
+- **Continuidad de Servicio:** Al estar en la nube, el sistema opera de forma independiente al equipo local; un corte de luz o reinicio de PC no afecta la disponibilidad.
+
+---
+
+### ¿Por qué se eligió de esa manera?
+
+| Componente | Elección | Razón Técnica |
+|---|---|---|
+| **Infraestructura** | Render + Vercel | Plataformas líderes con CI/CD integrado: cada push a GitHub dispara un redeploy automático en minutos |
+| **Host del servidor** | `0.0.0.0` | Configura el servidor para escuchar en todas las interfaces de red, requisito indispensable para que nubes públicas como Render detecten el puerto abierto |
+| **Seguridad DB** | IP Access List `0.0.0.0/0` | Los servidores de Render tienen IPs dinámicas que cambian en cada deploy; el acceso universal en Atlas garantiza que nunca sean bloqueados por el firewall |
+| **Rutas** | `vercel.json` | Redirige `/api/*` al backend en Render (proxy transparente) y todas las rutas internas a `index.html`, evitando los errores 404 propios de SPAs en recarga directa |
+| **Stack MEAN** | MongoDB · Express · Angular · Node | Ecosistema JavaScript unificado: mismo lenguaje en frontend y backend, reduciendo la curva de aprendizaje y el tiempo de desarrollo |
+
+---
+
+### Arquitectura en producción
+
+```
+Usuario (navegador)
+        │
+        ▼
+┌───────────────────┐
+│      Vercel       │  ← Frontend Angular (SPA)
+│  (CDN global)     │
+│                   │
+│  vercel.json      │
+│  /api/* ──────────┼──────────────────────────────┐
+│  /*    → index.html                              │
+└───────────────────┘                              │
+                                                   ▼
+                                       ┌───────────────────────┐
+                                       │        Render         │
+                                       │  Node.js + Express    │
+                                       │  Puerto dinámico      │
+                                       │  HOST: 0.0.0.0        │
+                                       └───────────┬───────────┘
+                                                   │
+                                                   ▼
+                                       ┌───────────────────────┐
+                                       │    MongoDB Atlas      │
+                                       │  Clúster profesional  │
+                                       │  IP Access: 0.0.0.0/0 │
+                                       └───────────────────────┘
+```
+
+---
+
+### Estado actual
+
+**El sistema está Live y operativo.**
+
+| Servicio | URL | Estado |
+|---|---|---|
+| Frontend | URL de Vercel del proyecto | Activo |
+| Backend API | `https://api-grabados-backend.onrender.com/api` | Activo |
+| Base de datos | MongoDB Atlas (clúster en la nube) | Activo |
+
+> **Nota:** Render en plan gratuito puede tener un tiempo de arranque en frío de ~30 segundos si el servidor estuvo inactivo. La primera petición puede tardar un poco más; las siguientes responden con normalidad.
