@@ -1,0 +1,111 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">{{ esEdicion() ? 'Editar Orden' : 'Nueva Orden' }}</h1>
+      <p class="page-subtitle">
+        {{ esEdicion() ? 'Modifica los datos de la orden seleccionada' : 'Registra una nueva orden de grabado láser' }}
+      </p>
+    </div>
+    <a routerLink="/ordenes" class="btn btn-outline">← Volver</a>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="form-card">
+
+    <!-- Datos del cliente -->
+    <div class="form-section">
+      <h2 class="section-title">Datos del Cliente</h2>
+      <div class="form-grid">
+
+        <div class="campo">
+          <label for="cliente">Cliente <span class="req">*</span></label>
+          <input id="cliente" formControlName="cliente" type="text"
+                 placeholder="Nombre completo del cliente">
+          @if (campoInvalido('cliente')) {
+            <span class="campo-error">El cliente es requerido</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="objeto">Objeto a grabar <span class="req">*</span></label>
+          <input id="objeto" formControlName="objeto" type="text"
+                 placeholder="Ej: Llavero, Placa, Tablero">
+          @if (campoInvalido('objeto')) {
+            <span class="campo-error">El objeto es requerido</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="material">Material <span class="req">*</span></label>
+          <input id="material" formControlName="material" type="text"
+                 placeholder="Ej: Madera, Acrílico, Metal">
+          @if (campoInvalido('material')) {
+            <span class="campo-error">El material es requerido</span>
+          }
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Parámetros láser -->
+    <div class="form-section" formGroupName="parametros_laser">
+      <h2 class="section-title">Parámetros Láser <span class="optional">(opcional)</span></h2>
+      <div class="form-grid form-grid-2">
+
+        <div class="campo">
+          <label for="potencia">Potencia (W)</label>
+          <input id="potencia" formControlName="potencia" type="number"
+                 placeholder="0" min="0" step="1">
+        </div>
+
+        <div class="campo">
+          <label for="velocidad">Velocidad (mm/s)</label>
+          <input id="velocidad" formControlName="velocidad" type="number"
+                 placeholder="0" min="0" step="1">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Estado y precio -->
+    <div class="form-section">
+      <h2 class="section-title">Estado y Precio</h2>
+      <div class="form-grid form-grid-2">
+
+        <div class="campo">
+          <label for="estado">Estado <span class="req">*</span></label>
+          <select id="estado" formControlName="estado">
+            <option value="Pendiente">Pendiente</option>
+            <option value="Terminado">Terminado</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="precio_cop">Precio (COP) <span class="req">*</span></label>
+          <input id="precio_cop" formControlName="precio_cop" type="number"
+                 placeholder="0" min="0">
+          @if (campoInvalido('precio_cop')) {
+            <span class="campo-error">El precio es requerido y debe ser ≥ 0</span>
+          }
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="form-footer">
+      <a routerLink="/ordenes" class="btn btn-outline">Cancelar</a>
+      <button type="submit" [disabled]="guardando()" class="btn btn-primary">
+        @if (guardando()) {
+          Guardando...
+        } @else {
+          {{ esEdicion() ? 'Actualizar Orden' : 'Crear Orden' }}
+        }
+      </button>
+    </div>
+
+  </form>
+</div>

@@ -1,0 +1,26 @@
+<nav class="navbar">
+  <span class="navbar-brand">Grabado Láser</span>
+  <ul class="navbar-links">
+    <li>
+      <a routerLink="/ordenes"
+         routerLinkActive="active"
+         [routerLinkActiveOptions]="{ exact: true }">
+        Órdenes
+      </a>
+    </li>
+    <li>
+      <a routerLink="/ordenes/nueva" routerLinkActive="active">
+        + Nueva Orden
+      </a>
+    </li>
+    <li>
+      <a routerLink="/informe" routerLinkActive="active">
+        Informe XML
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<main class="main-content">
+  <router-outlet />
+</main>

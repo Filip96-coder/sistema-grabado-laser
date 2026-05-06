@@ -1,0 +1,51 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Informe Operativo</h1>
+      <p class="page-subtitle">Reporte financiero y de avance en formato XML</p>
+    </div>
+    <div class="header-actions">
+      @if (xmlContent()) {
+        <button (click)="copiarXML()" class="btn btn-outline">
+          {{ copiado() ? '✓ Copiado' : 'Copiar XML' }}
+        </button>
+      }
+      <button (click)="cargarInforme()" [disabled]="cargando()" class="btn btn-primary">
+        {{ cargando() ? 'Generando...' : 'Actualizar' }}
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Consultando base de datos y generando XML...</p>
+    </div>
+  }
+
+  @if (xmlContent() && !cargando()) {
+    <div class="visor-card">
+      <div class="visor-toolbar">
+        <div class="toolbar-dots">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+        </div>
+        <span class="toolbar-filename">informe_operacion.xml</span>
+        <span class="toolbar-badge">XML</span>
+      </div>
+      <pre class="xml-pre"><code class="xml-code">{{ xmlContent() }}</code></pre>
+    </div>
+  }
+
+  @if (!xmlContent() && !cargando() && !error()) {
+    <div class="empty-state">
+      <p class="empty-icon">📄</p>
+      <p>Presiona <strong>Actualizar</strong> para generar el reporte XML.</p>
+    </div>
+  }
+</div>

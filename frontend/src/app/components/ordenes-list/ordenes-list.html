@@ -1,0 +1,72 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Órdenes de Trabajo</h1>
+      <p class="page-subtitle">{{ ordenes().length }} órdenes registradas</p>
+    </div>
+    <a routerLink="/ordenes/nueva" class="btn btn-primary">+ Nueva Orden</a>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando órdenes...</p>
+    </div>
+  } @else if (ordenes().length === 0) {
+    <div class="empty-state">
+      <p class="empty-icon">📋</p>
+      <p>No hay órdenes registradas aún.</p>
+      <a routerLink="/ordenes/nueva" class="btn btn-primary">Crear la primera orden</a>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Objeto</th>
+            <th>Material</th>
+            <th class="text-center">Potencia</th>
+            <th class="text-center">Velocidad</th>
+            <th>Estado</th>
+            <th class="text-right">Precio (COP)</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (orden of ordenes(); track orden._id) {
+            <tr>
+              <td class="fw-medium">{{ orden.cliente }}</td>
+              <td>{{ orden.objeto }}</td>
+              <td>{{ orden.material }}</td>
+              <td class="text-center text-muted">
+                {{ orden.parametros_laser?.potencia != null ? orden.parametros_laser!.potencia + ' W' : '—' }}
+              </td>
+              <td class="text-center text-muted">
+                {{ orden.parametros_laser?.velocidad != null ? orden.parametros_laser!.velocidad + ' mm/s' : '—' }}
+              </td>
+              <td>
+                <span class="badge"
+                      [class.badge-terminado]="orden.estado === 'Terminado'"
+                      [class.badge-pendiente]="orden.estado === 'Pendiente'">
+                  {{ orden.estado }}
+                </span>
+              </td>
+              <td class="text-right fw-medium">
+                {{ orden.precio_cop | currency:'COP':'symbol-narrow':'1.0-0' }}
+              </td>
+              <td class="acciones">
+                <button (click)="editar(orden)" class="btn btn-sm btn-outline">Editar</button>
+                <button (click)="eliminar(orden._id!, orden.cliente)" class="btn btn-sm btn-danger">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

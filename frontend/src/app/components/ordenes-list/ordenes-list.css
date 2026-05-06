@@ -1,0 +1,74 @@
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabla thead tr {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabla th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla tbody tr:hover {
+  background: #f8fafc;
+}
+
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+.text-muted  { color: var(--text-muted); }
+.fw-medium   { font-weight: 500; }
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-pendiente {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.badge-terminado {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.acciones {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  white-space: nowrap;
+}

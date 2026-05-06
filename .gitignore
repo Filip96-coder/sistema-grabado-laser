@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (nunca subir al repo)
+.env
+*.env.local
+
+# Builds de producción
+dist/
+build/
+
+# Cache de Angular
+.angular/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Claude Code
+.claude/

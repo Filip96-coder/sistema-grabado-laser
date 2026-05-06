@@ -1,0 +1,31 @@
+{
+  "name": "laser-orders-api",
+  "version": "1.0.0",
+  "description": "API REST para gestión de órdenes de grabado láser",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "laser",
+    "orders",
+    "api",
+    "express",
+    "mongodb"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.6.1",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
