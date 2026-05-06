@@ -6,7 +6,7 @@ import { OrdenTrabajo } from '../models/orden.model';
 @Injectable({ providedIn: 'root' })
 export class Ordenes {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:3000/api';
+  private readonly apiUrl = 'https://api-grabados-backend.onrender.com';
 
   // Estado temporal para pasar la orden al formulario de edición
   private _ordenEnEdicion: OrdenTrabajo | null = null;
