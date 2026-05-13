@@ -9,7 +9,7 @@ const { requireAuth } = require('./middleware/auth.middleware');
 
 const app = express();
 
-app.use(cors());
+app.use(cors('https://sistema-grabado-laser-pwq67mdom-filip96-coders-projects.vercel.app'));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
