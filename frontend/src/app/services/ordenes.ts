@@ -6,7 +6,7 @@ import { OrdenTrabajo } from '../models/orden.model';
 @Injectable({ providedIn: 'root' })
 export class Ordenes {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'https://api-grabados-backend.onrender.com/api';
+  private readonly apiUrl = this.resolverApiUrl();
 
   // Estado temporal para pasar la orden al formulario de edición
   private _ordenEnEdicion: OrdenTrabajo | null = null;
@@ -17,7 +17,9 @@ export class Ordenes {
     return this.http.get<OrdenTrabajo[]>(`${this.apiUrl}/ordenes`);
   }
 
-  crearOrden(orden: Omit<OrdenTrabajo, '_id' | 'createdAt' | 'updatedAt'>): Observable<OrdenTrabajo> {
+  crearOrden(
+    orden: Omit<OrdenTrabajo, '_id' | 'createdAt' | 'updatedAt'>,
+  ): Observable<OrdenTrabajo> {
     return this.http.post<OrdenTrabajo>(`${this.apiUrl}/ordenes`, orden);
   }
 
@@ -32,8 +34,12 @@ export class Ordenes {
   // ── Informe XML ───────────────────────────────────────────────────────
   // responseType: 'text' necesario porque el backend devuelve application/xml
 
-  getInformeXML(): Observable<string> {
+  getInformeMaterialesXML(): Observable<string> {
     return this.http.get(`${this.apiUrl}/informes/operacion`, { responseType: 'text' });
+  }
+
+  getInformeOrdenesXML(): Observable<string> {
+    return this.http.get(`${this.apiUrl}/informes/ordenes`, { responseType: 'text' });
   }
 
   // ── Estado para edición ───────────────────────────────────────────────
@@ -48,5 +54,15 @@ export class Ordenes {
 
   clearOrdenEnEdicion(): void {
     this._ordenEnEdicion = null;
+  }
+
+  private resolverApiUrl(): string {
+    const host = globalThis.location.hostname;
+
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:3000/api';
+    }
+
+    return '/api';
   }
 }

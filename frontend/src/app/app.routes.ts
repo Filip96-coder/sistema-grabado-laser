@@ -9,18 +9,16 @@ export const routes: Routes = [
   },
   {
     path: 'ordenes/nueva',
-    loadComponent: () =>
-      import('./components/orden-form/orden-form').then((m) => m.OrdenForm),
+    loadComponent: () => import('./components/orden-form/orden-form').then((m) => m.OrdenForm),
   },
   {
     path: 'ordenes/editar/:id',
-    loadComponent: () =>
-      import('./components/orden-form/orden-form').then((m) => m.OrdenForm),
+    loadComponent: () => import('./components/orden-form/orden-form').then((m) => m.OrdenForm),
   },
   {
-    path: 'informe',
-    loadComponent: () =>
-      import('./components/informe-xml/informe-xml').then((m) => m.InformeXml),
+    path: 'informes',
+    loadComponent: () => import('./components/informe-xml/informe-xml').then((m) => m.InformeXml),
   },
+  { path: 'informe', redirectTo: 'informes', pathMatch: 'full' },
   { path: '**', redirectTo: 'ordenes' },
 ];

@@ -1,17 +1,22 @@
-<div class="page">
-  <header class="page-header">
+<div class="page reports-page">
+  <header class="page-header reports-hero">
     <div>
-      <h1 class="page-title">Informe Operativo</h1>
-      <p class="page-subtitle">Reporte financiero y de avance en formato XML</p>
+      <p class="hero-kicker">Centro de informes</p>
+      <h1 class="page-title">Informes XML con exploracion puntual</h1>
+      <p class="page-subtitle">
+        Cambia entre el XML de `ordenes_por_material` y el XML de ordenes, con filtros visuales para
+        bajar directo al bloque que queres inspeccionar.
+      </p>
     </div>
-    <div class="header-actions">
-      @if (xmlContent()) {
-        <button (click)="copiarXML()" class="btn btn-outline">
-          {{ copiado() ? '✓ Copiado' : 'Copiar XML' }}
+
+    <div class="header-actions hero-actions">
+      @if (xmlActivo()) {
+        <button (click)="copiarXML()" class="btn btn-outline-primary">
+          {{ copiado() ? '✓ Copiado' : 'Copiar XML activo' }}
         </button>
       }
-      <button (click)="cargarInforme()" [disabled]="cargando()" class="btn btn-primary">
-        {{ cargando() ? 'Generando...' : 'Actualizar' }}
+      <button (click)="cargarInformes()" [disabled]="cargando()" class="btn btn-primary">
+        {{ cargando() ? 'Actualizando...' : 'Actualizar informes' }}
       </button>
     </div>
   </header>
@@ -23,29 +28,137 @@
   @if (cargando()) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Consultando base de datos y generando XML...</p>
+      <p>Consultando base de datos y generando los XML...</p>
     </div>
   }
 
-  @if (xmlContent() && !cargando()) {
-    <div class="visor-card">
-      <div class="visor-toolbar">
-        <div class="toolbar-dots">
-          <span class="dot dot-red"></span>
-          <span class="dot dot-yellow"></span>
-          <span class="dot dot-green"></span>
+  @if (!cargando()) {
+    <section class="stats-strip">
+      @for (stat of statsActivos(); track stat.etiqueta) {
+        <article class="stat-card">
+          <span class="stat-label">{{ stat.etiqueta }}</span>
+          <strong class="stat-value">{{ stat.valor }}</strong>
+        </article>
+      }
+    </section>
+
+    <section class="report-grid">
+      @for (informe of informes; track informe.id) {
+        <article class="report-card" [class.report-card-active]="informeActivo() === informe.id">
+          <div class="report-card-header">
+            <span class="report-tag">{{
+              informe.id === 'materiales' ? 'Agrupado' : 'Filtrable'
+            }}</span>
+            <h2>{{ informe.titulo }}</h2>
+          </div>
+
+          <p>{{ informe.descripcion }}</p>
+
+          <div class="report-actions">
+            <button
+              type="button"
+              class="btn"
+              [class.btn-primary]="informeActivo() !== informe.id"
+              [class.btn-outline]="informeActivo() === informe.id"
+              (click)="seleccionarInforme(informe.id)"
+            >
+              {{ informeActivo() === informe.id ? 'En vista' : 'Abrir informe' }}
+            </button>
+          </div>
+
+          @if (informe.id === 'materiales' && materiales().length) {
+            <div class="filter-block">
+              <span class="filter-title">Ordenes por material</span>
+              <div class="filter-pills">
+                @for (material of materiales(); track material.nombre) {
+                  <button
+                    type="button"
+                    class="filter-pill"
+                    [class.filter-pill-active]="materialSeleccionado()?.nombre === material.nombre"
+                    (click)="seleccionarMaterial(material)"
+                  >
+                    {{ material.nombre }}
+                    <span>{{ material.cantidad }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (informe.id === 'ordenes' && clientes().length) {
+            <div class="filter-block">
+              <span class="filter-title">Filtrar por cliente</span>
+              <div class="filter-pills">
+                @for (cliente of clientes(); track cliente.nombre) {
+                  <button
+                    type="button"
+                    class="filter-pill filter-pill-client"
+                    [class.filter-pill-active]="clienteSeleccionado()?.nombre === cliente.nombre"
+                    (click)="seleccionarCliente(cliente)"
+                  >
+                    {{ cliente.nombre }}
+                    <span>{{ cliente.cantidad }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </article>
+      }
+    </section>
+  }
+
+  @if (xmlActivo() && !cargando()) {
+    <div class="viewer-layout">
+      <section class="visor-card visor-card-main">
+        <div class="visor-toolbar">
+          <div class="toolbar-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <span class="toolbar-filename">{{ archivoActivo() }}</span>
+          <span class="toolbar-badge">XML</span>
         </div>
-        <span class="toolbar-filename">informe_operacion.xml</span>
-        <span class="toolbar-badge">XML</span>
-      </div>
-      <pre class="xml-pre"><code class="xml-code">{{ xmlContent() }}</code></pre>
+        <pre class="xml-pre"><code class="xml-code">{{ xmlActivo() }}</code></pre>
+      </section>
+
+      @if (tieneDetalleActivo()) {
+        <aside class="detail-card">
+          <div class="detail-card-header">
+            <div>
+              <p class="detail-eyebrow">{{ detalleActivoEtiqueta() }}</p>
+              <h3>{{ detalleActivoTitulo() }}</h3>
+            </div>
+            <span class="detail-count">{{ detalleActivoCantidad() }} ordenes</span>
+          </div>
+
+          <div class="detail-callout">
+            @if (informeActivo() === 'materiales') {
+              <p>
+                Este bloque te deja auditar rapido el grupo XML exacto que sale bajo
+                `ordenes_por_material`.
+              </p>
+            } @else {
+              <p>
+                Este bloque filtra el XML de ordenes para que revises solo el cliente elegido sin
+                ruido extra.
+              </p>
+            }
+          </div>
+
+          <pre
+            class="xml-pre xml-pre-detail"
+          ><code class="xml-code">{{ detalleActivoXml() }}</code></pre>
+        </aside>
+      }
     </div>
   }
 
-  @if (!xmlContent() && !cargando() && !error()) {
+  @if (!xmlActivo() && !cargando() && !error()) {
     <div class="empty-state">
       <p class="empty-icon">📄</p>
-      <p>Presiona <strong>Actualizar</strong> para generar el reporte XML.</p>
+      <p>Presiona <strong>Actualizar informes</strong> para generar los XML.</p>
     </div>
   }
 </div>
