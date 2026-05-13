@@ -14,14 +14,17 @@
 5. [Backend — API REST](#5-backend--api-rest)
    - 5.1 [Dependencias](#51-dependencias)
    - 5.2 [Variables de Entorno](#52-variables-de-entorno)
-   - 5.3 [Endpoints CRUD](#53-endpoints-crud)
-   - 5.4 [Endpoint de Informe XML](#54-endpoint-de-informe-xml)
-   - 5.5 [Lógica del Informe](#55-lógica-del-informe)
+   - 5.3 [Autenticación](#53-autenticación)
+   - 5.4 [Endpoints CRUD](#54-endpoints-crud)
+   - 5.5 [Endpoint de Admin](#55-endpoint-de-admin)
+   - 5.6 [Endpoints de Informe XML](#56-endpoints-de-informe-xml)
+   - 5.7 [Lógica del Informe](#57-lógica-del-informe)
 6. [Frontend — Angular SPA](#6-frontend--angular-spa)
    - 6.1 [Dependencias y Stack](#61-dependencias-y-stack)
    - 6.2 [Rutas de la Aplicación](#62-rutas-de-la-aplicación)
-   - 6.3 [Servicio HTTP](#63-servicio-http)
-   - 6.4 [Componentes](#64-componentes)
+   - 6.3 [Servicios HTTP](#63-servicios-http)
+   - 6.4 [Guards e Interceptores](#64-guards-e-interceptores)
+   - 6.5 [Componentes](#65-componentes)
 7. [Instalación y Ejecución](#7-instalación-y-ejecución)
 8. [Flujo de Datos Completo](#8-flujo-de-datos-completo)
 9. [Decisiones de Diseño](#9-decisiones-de-diseño)
@@ -34,32 +37,39 @@
 
 Aplicación web SPA (Single Page Application) para gestionar órdenes de trabajo de grabado láser. Permite:
 
+- **Autenticarse** mediante usuario y contraseña para acceder al sistema protegido.
 - **Registrar** órdenes con datos del cliente, objeto, material, parámetros del láser, estado y precio.
 - **Consultar, editar y eliminar** órdenes desde una interfaz de tabla.
-- **Generar un informe operativo en XML** que calcula el valor total facturado y el porcentaje de ejecución, agrupando los trabajos por material.
+- **Ver un panel administrativo** con métricas clave (totales, valor facturado, clientes y materiales activos) y las últimas 5 órdenes.
+- **Generar informes operativos en XML:** uno agrupado por material y otro con el listado completo de órdenes.
 
 ---
 
 ## 2. Arquitectura General
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────┐
-│        FRONTEND             │        │          BACKEND             │
-│     Angular 21 SPA          │        │    Node.js + Express 5       │
-│   http://localhost:4200     │◄──────►│    http://localhost:3000     │
-│                             │  HTTP  │                              │
-│  ┌──────────────────────┐   │        │  ┌────────────────────────┐  │
-│  │  ordenes-list        │   │        │  │  /api/ordenes  (CRUD)  │  │
-│  │  orden-form          │   │        │  │  /api/informes/operacion│  │
-│  │  informe-xml         │   │        │  └────────────────────────┘  │
-│  └──────────────────────┘   │        │             │                │
-└─────────────────────────────┘        │      Mongoose ODM            │
-                                        │             │                │
-                                        │  ┌──────────▼─────────────┐ │
-                                        │  │    MongoDB Atlas        │ │
-                                        │  │  (colección: ordenes)  │ │
-                                        │  └────────────────────────┘ │
-                                        └──────────────────────────────┘
+┌──────────────────────────────────┐        ┌──────────────────────────────────┐
+│           FRONTEND               │        │             BACKEND              │
+│       Angular 21 SPA             │        │      Node.js + Express 5         │
+│    http://localhost:4200         │◄──────►│      http://localhost:3000       │
+│                                  │  HTTP  │                                  │
+│  ┌────────────────────────────┐  │        │  ┌──────────────────────────┐    │
+│  │  login-page                │  │        │  │  POST /api/auth/login    │    │
+│  │  admin-page                │  │        │  │  GET  /api/auth/me       │    │
+│  │  ordenes-list              │  │        │  │  GET  /api/admin/resumen │    │
+│  │  orden-form                │  │        │  │  /api/ordenes  (CRUD)    │    │
+│  │  informe-xml               │  │        │  │  /api/informes/operacion │    │
+│  └────────────────────────────┘  │        │  │  /api/informes/ordenes   │    │
+│                                  │        │  └──────────────────────────┘    │
+│  AuthService + AuthInterceptor   │        │  requireAuth (middleware)        │
+│  AuthGuard / GuestGuard          │        │             │                    │
+└──────────────────────────────────┘        │      Mongoose ODM                │
+                                             │             │                    │
+                                             │  ┌──────────▼─────────────────┐ │
+                                             │  │      MongoDB Atlas          │ │
+                                             │  │   (colección: ordenes)     │ │
+                                             │  └────────────────────────────┘ │
+                                             └──────────────────────────────────┘
 ```
 
 ---
@@ -72,34 +82,53 @@ DISTRIBUIDAYPARALELA/
 ├── DOCUMENTACION.md                ← este archivo
 │
 ├── backend/
-│   ├── docs/
-│   │   └── DOCUMENTACION.md        ← doc legacy (ver este archivo)
 │   ├── src/
 │   │   ├── config/
-│   │   │   └── database.js         ← conexión a MongoDB Atlas
+│   │   │   └── database.js              ← conexión a MongoDB Atlas
 │   │   ├── controllers/
+│   │   │   ├── auth.controller.js       ← login y me (auth)
+│   │   │   ├── admin.controller.js      ← resumen administrativo
 │   │   │   ├── ordenes.controller.js    ← lógica CRUD
-│   │   │   └── informes.controller.js   ← cálculos + parseo XML
+│   │   │   └── informes.controller.js   ← dos informes XML
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.js       ← requireAuth (valida Bearer token)
 │   │   ├── models/
-│   │   │   └── OrdenTrabajo.js     ← schema y modelo Mongoose
+│   │   │   └── OrdenTrabajo.js          ← schema y modelo Mongoose
 │   │   ├── routes/
+│   │   │   ├── auth.routes.js           ← POST /login, GET /me
+│   │   │   ├── admin.routes.js          ← GET /resumen
 │   │   │   ├── ordenes.routes.js
 │   │   │   └── informes.routes.js
-│   │   └── app.js                  ← configuración Express (middleware, rutas)
-│   ├── .env                        ← variables de entorno (NO subir a git)
-│   ├── .env.example                ← plantilla de variables de entorno
-│   ├── .gitignore
+│   │   ├── utils/
+│   │   │   └── auth.js                  ← JWT propio (HMAC-SHA256, sin librería)
+│   │   └── app.js                       ← Express: middleware, rutas, requireAuth
+│   ├── .env                             ← variables de entorno (NO subir a git)
+│   ├── .env.example                     ← plantilla de variables de entorno
 │   ├── package.json
-│   └── server.js                   ← punto de entrada, arranca el servidor
+│   └── server.js                        ← punto de entrada, arranca el servidor
 │
 └── frontend/
     └── src/
         ├── app/
         │   ├── models/
-        │   │   └── orden.model.ts       ← interfaces TypeScript del dominio
+        │   │   ├── orden.model.ts        ← interfaces TypeScript del dominio
+        │   │   └── auth.model.ts         ← SessionInfo, LoginResponse, AdminResumenResponse
         │   ├── services/
-        │   │   └── ordenes.ts           ← servicio HTTP (CRUD + XML + estado edición)
+        │   │   ├── ordenes.ts            ← CRUD + dos XMLs + estado edición
+        │   │   └── auth.service.ts       ← login, logout, token, getAdminResumen
+        │   ├── guards/
+        │   │   └── auth.guard.ts         ← authGuard (redirige a /login) y guestGuard
+        │   ├── interceptors/
+        │   │   └── auth.interceptor.ts   ← inyecta Bearer token; redirige en 401
         │   ├── components/
+        │   │   ├── login-page/
+        │   │   │   ├── login-page.ts
+        │   │   │   ├── login-page.html
+        │   │   │   └── login-page.css
+        │   │   ├── admin-page/
+        │   │   │   ├── admin-page.ts
+        │   │   │   ├── admin-page.html
+        │   │   │   └── admin-page.css
         │   │   ├── ordenes-list/
         │   │   │   ├── ordenes-list.ts
         │   │   │   ├── ordenes-list.html
@@ -112,12 +141,12 @@ DISTRIBUIDAYPARALELA/
         │   │       ├── informe-xml.ts
         │   │       ├── informe-xml.html
         │   │       └── informe-xml.css
-        │   ├── app.routes.ts            ← definición de rutas con lazy-loading
-        │   ├── app.config.ts            ← providers: HttpClient, Router
-        │   ├── app.ts                   ← componente raíz (navbar)
+        │   ├── app.routes.ts             ← rutas con lazy-loading y guards
+        │   ├── app.config.ts             ← providers: HttpClient + authInterceptor, Router
+        │   ├── app.ts                    ← componente raíz (navbar)
         │   ├── app.html
         │   └── app.css
-        └── styles.css                   ← design system global (variables, botones, alertas)
+        └── styles.css                    ← design system global (variables, botones, alertas)
 ```
 
 ---
@@ -198,6 +227,8 @@ export interface OrdenTrabajo {
 | `xml2js`    | ^0.6.2    | Serializar objetos JS → XML (`Builder`)     |
 | `nodemon`   | (dev)     | Auto-restart del servidor en desarrollo     |
 
+> El sistema de autenticación usa el módulo nativo `crypto` de Node.js — no requiere ninguna librería JWT externa.
+
 ### 5.2 Variables de Entorno
 
 Crea un archivo `.env` en `backend/` a partir de `.env.example`:
@@ -205,11 +236,69 @@ Crea un archivo `.env` en `backend/` a partir de `.env.example`:
 ```env
 PORT=3000
 MONGODB_URI=mongodb+srv://<usuario>:<password>@cluster0.xxxxx.mongodb.net/laser_orders?retryWrites=true&w=majority
+
+# Autenticación
+AUTH_USERNAME=admin
+AUTH_PASSWORD=tu_password_seguro
+AUTH_TOKEN_SECRET=clave_aleatoria_larga_y_segura
 ```
 
-### 5.3 Endpoints CRUD
+En **desarrollo**, si estas tres variables no están definidas, el sistema usa credenciales de fallback (`admin` / `admin1234`) automáticamente. En **producción** (`NODE_ENV=production`), las variables son obligatorias y el servidor rechaza las peticiones si faltan.
 
-**Base URL:** `http://localhost:3000/api/ordenes`
+### 5.3 Autenticación
+
+El sistema implementa autenticación basada en tokens con firma HMAC-SHA256, sin dependencias externas.
+
+#### Cómo funciona
+
+```
+Cliente envía POST /api/auth/login { username, password }
+      ↓
+auth.controller.js valida credenciales con crypto.timingSafeEqual()
+      ↓
+Si válido → signToken(username):
+   payload = { sub: username, exp: Date.now() + 12h }
+   encodedPayload = base64url(JSON.stringify(payload))
+   signature = HMAC-SHA256(encodedPayload, AUTH_TOKEN_SECRET)
+   token = encodedPayload + '.' + signature
+      ↓
+Respuesta: { token, session: { username, role: 'admin' }, meta }
+      ↓
+Cliente guarda token en localStorage (key: 'laser-auth-session')
+      ↓
+Todas las peticiones siguientes incluyen: Authorization: Bearer <token>
+      ↓
+requireAuth middleware: verifica firma y expiración del token
+```
+
+#### Endpoints de autenticación
+
+**Base URL:** `http://localhost:3000/api/auth`
+
+| Método | Ruta      | Protegida | Descripción                           |
+|--------|-----------|-----------|---------------------------------------|
+| `POST` | `/login`  | No        | Autentica y devuelve token            |
+| `GET`  | `/me`     | Sí        | Devuelve la sesión del token actual   |
+
+**Body para POST /login:**
+```json
+{ "username": "admin", "password": "tu_password" }
+```
+
+**Respuesta exitosa:**
+```json
+{
+  "token": "eyJ...",
+  "session": { "username": "admin", "role": "admin" },
+  "meta": { "usingFallbackCredentials": false }
+}
+```
+
+**Rutas protegidas:** `/api/ordenes`, `/api/informes` y `/api/admin` requieren el header `Authorization: Bearer <token>`. Sin él, el servidor responde `401`.
+
+### 5.4 Endpoints CRUD
+
+**Base URL:** `http://localhost:3000/api/ordenes` _(requiere autenticación)_
 
 | Método   | Ruta               | Descripción                | Código éxito |
 |----------|--------------------|----------------------------|--------------|
@@ -242,12 +331,42 @@ MONGODB_URI=mongodb+srv://<usuario>:<password>@cluster0.xxxxx.mongodb.net/laser_
 
 Los errores de validación devuelven `400`; los errores internos devuelven `500`; "no encontrado" devuelve `404`.
 
-### 5.4 Endpoint de Informe XML
+### 5.5 Endpoint de Admin
 
-**URL:** `GET http://localhost:3000/api/informes/operacion`
-**Content-Type de respuesta:** `application/xml; charset=utf-8`
+**URL:** `GET http://localhost:3000/api/admin/resumen` _(requiere autenticación)_
 
-#### Ejemplo de respuesta
+Devuelve un resumen de métricas y las últimas 5 órdenes.
+
+**Respuesta:**
+```json
+{
+  "session": { "username": "admin", "role": "admin" },
+  "metrics": {
+    "total_ordenes": 12,
+    "ordenes_terminadas": 8,
+    "ordenes_pendientes": 4,
+    "valor_total_cop": 480000,
+    "clientes_activos": 5,
+    "materiales_activos": 3
+  },
+  "latest_orders": [
+    {
+      "id": "664abc...",
+      "cliente": "Juan Pérez",
+      "objeto": "Llavero",
+      "material": "Madera",
+      "estado": "Terminado",
+      "precio_cop": 25000
+    }
+  ]
+}
+```
+
+### 5.6 Endpoints de Informe XML
+
+Ambos endpoints requieren autenticación. **Content-Type de respuesta:** `application/xml; charset=utf-8`
+
+#### GET `/api/informes/operacion` — Agrupado por material
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -259,7 +378,7 @@ Los errores de validación devuelven `400`; los errores internos devuelven `500`
     <valor_total_cop>175000</valor_total_cop>
     <porcentaje_ejecutado>60%</porcentaje_ejecutado>
   </resumen>
-  <materiales>
+  <ordenes_por_material>
     <material nombre="Madera" cantidad="3">
       <trabajo id="664abc...">
         <cliente>Juan Pérez</cliente>
@@ -270,36 +389,53 @@ Los errores de validación devuelven `400`; los errores internos devuelven `500`
         <velocidad_mm_s>300</velocidad_mm_s>
       </trabajo>
     </material>
-    <material nombre="Acrílico" cantidad="2">
-      <trabajo id="664def...">
-        ...
-      </trabajo>
-    </material>
-  </materiales>
+  </ordenes_por_material>
 </informe_operacion>
 ```
 
-### 5.5 Lógica del Informe
+#### GET `/api/informes/ordenes` — Listado completo ordenado por fecha
 
-Implementada en `backend/src/controllers/informes.controller.js`:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<informe_operacion>
+  <resumen>...</resumen>
+  <ordenes>
+    <orden id="664abc...">
+      <cliente>Juan Pérez</cliente>
+      <objeto>Llavero</objeto>
+      <material>Madera</material>
+      <estado>Terminado</estado>
+      <precio_cop>25000</precio_cop>
+      <potencia_w>80</potencia_w>
+      <velocidad_mm_s>300</velocidad_mm_s>
+      <created_at>2024-05-13T10:00:00.000Z</created_at>
+      <updated_at>2024-05-13T10:00:00.000Z</updated_at>
+    </orden>
+  </ordenes>
+</informe_operacion>
+```
+
+### 5.7 Lógica del Informe
+
+Implementada en `backend/src/controllers/informes.controller.js`. Ambos informes comparten la función `crearResumen()`:
 
 ```
 1. OrdenTrabajo.find().lean()
       ↓
-2. Calcular métricas:
+2. crearResumen(ordenes):
    - valorTotal          = Σ precio_cop
    - ordenesTerminadas   = filter(estado === 'Terminado').length
-   - porcentajeEjecutado = (terminadas / total) × 100
+   - porcentajeEjecutado = (terminadas / total) × 100  [toFixed(2)]
       ↓
-3. Agrupar por material con Array.reduce()
+3a. /operacion → reduce() agrupa por material
+    → { ordenes_por_material: { material: [...] } }
+3b. /ordenes   → map() genera lista plana ordenada por createdAt DESC
+    → { ordenes: { orden: [...] } }
       ↓
-4. Construir objeto JS con estructura jerárquica:
-   { resumen: {...}, materiales: { material: [...] } }
+4. xml2js.Builder.buildObject(informeJSON)
+      → string XML indentado (renderOpts: { pretty: true })
       ↓
-5. xml2js.Builder.buildObject(informeJSON)
-      → string XML indentado
-      ↓
-6. res.set('Content-Type', 'application/xml').send(xmlString)
+5. res.set('Content-Type', 'application/xml').send(xmlString)
 ```
 
 > **Nota sobre xml2js:** Los atributos XML (ej. `nombre="Madera"`) se declaran
@@ -311,56 +447,129 @@ Implementada en `backend/src/controllers/informes.controller.js`:
 
 ### 6.1 Dependencias y Stack
 
-| Aspecto         | Tecnología / Decisión                              |
-|-----------------|----------------------------------------------------|
-| Framework       | Angular 21 — Standalone Components (sin NgModules) |
-| Formularios     | `ReactiveFormsModule` + `FormBuilder`              |
-| HTTP            | `HttpClient` + `provideHttpClient()` en config     |
-| Estado reactivo | Signals (`signal()`, Angular nativo)               |
-| Routing         | `provideRouter()` con lazy loading (`loadComponent`)|
-| Estilos         | CSS puro con custom properties (`--var`)           |
+| Aspecto         | Tecnología / Decisión                                        |
+|-----------------|--------------------------------------------------------------|
+| Framework       | Angular 21 — Standalone Components (sin NgModules)          |
+| Formularios     | `ReactiveFormsModule` + `FormBuilder`                        |
+| HTTP            | `HttpClient` + `provideHttpClient(withInterceptors([...]))` |
+| Estado reactivo | Signals (`signal()`, `computed()`, Angular nativo)           |
+| Routing         | `provideRouter()` con lazy loading (`loadComponent`)         |
+| Autenticación   | `AuthGuard`, `GuestGuard`, `AuthInterceptor`, `AuthService`  |
+| Estilos         | CSS puro con custom properties (`--var`)                     |
 
 ### 6.2 Rutas de la Aplicación
 
-| Ruta                   | Componente      | Descripción                       |
-|------------------------|-----------------|-----------------------------------|
-| `/ordenes`             | `OrdenesList`   | Tabla de todas las órdenes        |
-| `/ordenes/nueva`       | `OrdenForm`     | Formulario de creación            |
-| `/ordenes/editar/:id`  | `OrdenForm`     | Formulario de edición             |
-| `/informe`             | `InformeXml`    | Visor del informe XML             |
-| `**`                   | —               | Redirige a `/ordenes`             |
+| Ruta                   | Componente      | Guard         | Descripción                          |
+|------------------------|-----------------|---------------|--------------------------------------|
+| `` (raíz)              | —               | —             | Redirige a `/admin`                  |
+| `/login`               | `LoginPage`     | `guestGuard`  | Formulario de login                  |
+| `/admin`               | `AdminPage`     | `authGuard`   | Panel de métricas y últimas órdenes  |
+| `/ordenes`             | `OrdenesList`   | `authGuard`   | Tabla de todas las órdenes           |
+| `/ordenes/nueva`       | `OrdenForm`     | `authGuard`   | Formulario de creación               |
+| `/ordenes/editar/:id`  | `OrdenForm`     | `authGuard`   | Formulario de edición                |
+| `/informes`            | `InformeXml`    | `authGuard`   | Visor de informes XML                |
+| `/informe`             | —               | —             | Redirige a `/informes`               |
+| `**`                   | —               | —             | Redirige a `/ordenes`                |
 
 Todas las rutas usan **lazy loading**:
 
 ```ts
 {
-  path: 'ordenes',
+  path: 'admin',
+  canActivate: [authGuard],
   loadComponent: () =>
-    import('./components/ordenes-list/ordenes-list').then(m => m.OrdenesList),
+    import('./components/admin-page/admin-page').then(m => m.AdminPage),
 }
 ```
 
-### 6.3 Servicio HTTP
+### 6.3 Servicios HTTP
+
+#### `Ordenes` — CRUD y XML
 
 **Archivo:** `frontend/src/app/services/ordenes.ts`
 **Clase:** `Ordenes` (inyectable `providedIn: 'root'`)
 
-| Método                        | HTTP              | URL                                | Notas                              |
-|-------------------------------|-------------------|------------------------------------|-------------------------------------|
-| `getOrdenes()`                | `GET`             | `/api/ordenes`                     |                                     |
-| `crearOrden(payload)`         | `POST`            | `/api/ordenes`                     |                                     |
-| `actualizarOrden(id, payload)`| `PUT`             | `/api/ordenes/:id`                 |                                     |
-| `eliminarOrden(id)`           | `DELETE`          | `/api/ordenes/:id`                 |                                     |
-| `getInformeXML()`             | `GET`             | `/api/informes/operacion`          | `{ responseType: 'text' }`          |
-| `setOrdenEnEdicion(orden)`    | —                 | —                                  | Estado interno para edición         |
-| `getOrdenEnEdicion()`         | —                 | —                                  | Lo consume `OrdenForm`              |
-| `clearOrdenEnEdicion()`       | —                 | —                                  | Se llama tras guardar              |
+La URL base se resuelve dinámicamente: `localhost` → `http://localhost:3000/api`, cualquier otro host → `/api` (proxy Vercel).
+
+| Método                          | HTTP     | URL                              | Notas                              |
+|---------------------------------|----------|----------------------------------|------------------------------------|
+| `getOrdenes()`                  | `GET`    | `/api/ordenes`                   |                                    |
+| `crearOrden(payload)`           | `POST`   | `/api/ordenes`                   |                                    |
+| `actualizarOrden(id, payload)`  | `PUT`    | `/api/ordenes/:id`               |                                    |
+| `eliminarOrden(id)`             | `DELETE` | `/api/ordenes/:id`               |                                    |
+| `getInformeMaterialesXML()`     | `GET`    | `/api/informes/operacion`        | `{ responseType: 'text' }`         |
+| `getInformeOrdenesXML()`        | `GET`    | `/api/informes/ordenes`          | `{ responseType: 'text' }`         |
+| `setOrdenEnEdicion(orden)`      | —        | —                                | Estado interno para edición        |
+| `getOrdenEnEdicion()`           | —        | —                                | Lo consume `OrdenForm`             |
+| `clearOrdenEnEdicion()`         | —        | —                                | Se llama tras guardar              |
 
 > **Por qué `responseType: 'text'`:** Angular interpreta las respuestas con
 > `Content-Type: application/xml` como texto. Sin esta opción, `HttpClient`
 > intentaría parsear el XML como JSON y lanzaría un error de parseo.
 
-### 6.4 Componentes
+#### `AuthService` — Autenticación
+
+**Archivo:** `frontend/src/app/services/auth.service.ts`
+**Clase:** `AuthService` (inyectable `providedIn: 'root'`)
+
+| Método                  | Descripción                                                           |
+|-------------------------|-----------------------------------------------------------------------|
+| `login(user, pass)`     | `POST /api/auth/login` → guarda token en `localStorage`              |
+| `logout()`              | Elimina la sesión de `localStorage` y resetea la signal `session`    |
+| `isAuthenticated()`     | `true` si hay token almacenado                                        |
+| `obtenerToken()`        | Devuelve el token JWT o `null`                                        |
+| `getUsername()`         | Devuelve el nombre de usuario de la sesión activa                     |
+| `getAdminResumen()`     | `GET /api/admin/resumen` → devuelve métricas y últimas 5 órdenes     |
+
+La sesión se persiste en `localStorage` con la clave `laser-auth-session` como `{ token, session }`.
+
+### 6.4 Guards e Interceptores
+
+#### Guards (`frontend/src/app/guards/auth.guard.ts`)
+
+| Guard         | Comportamiento                                                          |
+|---------------|-------------------------------------------------------------------------|
+| `authGuard`   | Si no está autenticado, redirige a `/login`; si sí, permite el acceso  |
+| `guestGuard`  | Si ya está autenticado, redirige a `/admin`; si no, permite el acceso  |
+
+#### Interceptor (`frontend/src/app/interceptors/auth.interceptor.ts`)
+
+El `authInterceptor` se registra en `app.config.ts` con `withInterceptors([authInterceptor])`. Su comportamiento:
+
+1. Lee el token con `AuthService.obtenerToken()`.
+2. Si hay token y la petición no es a `/auth/login`, clona el request añadiendo `Authorization: Bearer <token>`.
+3. Si el servidor responde `401`, llama a `AuthService.logout()` y redirige a `/login`.
+
+### 6.5 Componentes
+
+#### `LoginPage` — Formulario de inicio de sesión
+
+**Archivo:** `components/login-page/login-page.ts`
+
+- Formulario reactivo con `username` y `password` (ambos requeridos).
+- Al enviar llama a `AuthService.login()` y navega a `/admin` si tiene éxito.
+- Muestra el mensaje de error devuelto por el backend en caso de credenciales inválidas.
+- Estado con signals: `cargando`, `error`.
+
+#### `AdminPage` — Panel administrativo
+
+**Archivo:** `components/admin-page/admin-page.ts`
+
+- Carga `AuthService.getAdminResumen()` al iniciar (`ngOnInit`).
+- Muestra 5 tarjetas de métricas usando un `computed()` signal que transforma los datos de la API.
+- Muestra una tabla con las últimas 5 órdenes.
+- Usa `CurrencyPipe` para formatear `valor_total_cop`.
+- Estado con signals: `cargando`, `error`, `resumen`.
+
+```
+metricas = computed(() => [
+  { etiqueta: 'Ordenes totales',    valor: metrics.total_ordenes },
+  { etiqueta: 'Terminadas',         valor: metrics.ordenes_terminadas },
+  { etiqueta: 'Pendientes',         valor: metrics.ordenes_pendientes },
+  { etiqueta: 'Clientes activos',   valor: metrics.clientes_activos },
+  { etiqueta: 'Materiales activos', valor: metrics.materiales_activos },
+])
+```
 
 #### `OrdenesList` — Lista de órdenes
 
@@ -400,6 +609,7 @@ FormGroup:
 **Archivo:** `components/informe-xml/informe-xml.ts`
 
 - Carga el informe automáticamente al iniciar (`ngOnInit`).
+- Permite alternar entre el informe por materiales (`getInformeMaterialesXML`) y el de órdenes (`getInformeOrdenesXML`).
 - Botón **Actualizar** para refrescar manualmente.
 - Botón **Copiar XML** que usa `navigator.clipboard.writeText()` con feedback visual ("✓ Copiado" por 2 s).
 - El XML se muestra en `<pre><code>{{ xmlContent() }}</code></pre>` con estilos de editor oscuro.
@@ -425,7 +635,7 @@ npm install
 
 # 2. Configurar variables de entorno
 copy .env.example .env
-# Editar .env: completar MONGODB_URI con la cadena de Atlas
+# Editar .env: completar MONGODB_URI, AUTH_USERNAME, AUTH_PASSWORD y AUTH_TOKEN_SECRET
 
 # 3. Ejecutar en desarrollo
 npm run dev    # nodemon → http://localhost:3000
@@ -459,12 +669,52 @@ Abrir el navegador en `http://localhost:4200`.
 
 ## 8. Flujo de Datos Completo
 
+### Iniciar sesión
+
+```
+Usuario accede a /login → guestGuard verifica: no autenticado → permite acceso
+    → LoginPage muestra formulario
+    → Usuario ingresa username + password → entrar()
+    → AuthService.login(username, password)
+    → POST /api/auth/login { username, password }
+    → auth.controller.js: validateCredentials() con timingSafeEqual()
+    → Si válido: signToken() → HMAC-SHA256(payload, secret)
+    → Respuesta: { token, session }
+    → AuthService guarda { token, session } en localStorage
+    → Angular navega a /admin
+```
+
+### Acceder a una ruta protegida
+
+```
+Usuario navega a /ordenes
+    → authGuard: AuthService.isAuthenticated() → true → permite acceso
+    → OrdenesList carga → Ordenes.getOrdenes()
+    → authInterceptor clona request + agrega Authorization: Bearer <token>
+    → GET /api/ordenes con header
+    → requireAuth middleware: verifyToken() valida firma y expiración
+    → ordenes.controller.js: OrdenTrabajo.find()
+    → Respuesta 200 [ ...ordenes ]
+    → Tabla renderizada en OrdenesList
+```
+
+### Sesión expirada
+
+```
+Token expirado (TTL 12 h)
+    → Cualquier petición protegida
+    → authInterceptor recibe 401
+    → AuthService.logout() → elimina localStorage
+    → Router.navigate(['/login'])
+```
+
 ### Crear una orden
 
 ```
 Usuario rellena OrdenForm
     → form.getRawValue() → payload JS
     → Ordenes.crearOrden(payload)
+    → authInterceptor añade Bearer token
     → POST /api/ordenes (JSON)
     → ordenes.controller.js: OrdenTrabajo.create(req.body)
     → MongoDB guarda el documento
@@ -476,14 +726,15 @@ Usuario rellena OrdenForm
 ### Generar informe
 
 ```
-Usuario visita /informe
+Usuario visita /informes
     → InformeXml.ngOnInit() → cargarInforme()
-    → Ordenes.getInformeXML()
-    → GET /api/informes/operacion { responseType: 'text' }
+    → Ordenes.getInformeMaterialesXML() o getInformeOrdenesXML()
+    → authInterceptor añade Bearer token
+    → GET /api/informes/operacion (o /ordenes) { responseType: 'text' }
     → informes.controller.js:
         OrdenTrabajo.find().lean()
-        → cálculos (Σ precios, % ejecutado)
-        → reduce() por material
+        → crearResumen() (Σ precios, % ejecutado)
+        → reduce() por material (operacion) o map() plano (ordenes)
         → xml2js.Builder.buildObject()
         → res.send(xmlString)
     → Angular recibe string XML
@@ -498,6 +749,11 @@ Usuario visita /informe
 
 | Decisión | Razón |
 |---|---|
+| `crypto` nativo para tokens (sin JWT lib) | Elimina una dependencia externa; `HMAC-SHA256` + `base64url` ofrece la misma seguridad que jsonwebtoken para un solo rol |
+| `crypto.timingSafeEqual()` para comparar credenciales | Previene ataques de temporización (timing attacks) que permitirían adivinar el password carácter a carácter |
+| Credenciales de fallback solo en desarrollo | En `NODE_ENV=production` el servidor devuelve `500` si faltan las variables, evitando que un deploy incompleto quede con credenciales débiles en producción |
+| Token TTL de 12 horas | Balance entre seguridad (tokens cortos) y usabilidad (no forzar re-login en una jornada laboral) |
+| `requireAuth` como middleware en `app.js` | Centraliza la protección a nivel de ruta, no de controlador; agregar una nueva ruta protegida es una sola línea |
 | `.lean()` en la consulta del informe | Retorna POJOs en lugar de documentos Mongoose completos, reduciendo el uso de memoria en lecturas masivas |
 | `xml2js.Builder` para generar XML | Librería madura con soporte nativo de atributos XML (clave `$`) sin necesidad de construir strings manualmente |
 | `runValidators: true` en `findByIdAndUpdate` | Garantiza que las validaciones del schema apliquen también en actualizaciones (por defecto Mongoose las omite en updates) |
@@ -508,6 +764,11 @@ Usuario visita /informe
 
 | Decisión | Razón |
 |---|---|
+| Token en `localStorage` (no cookies) | Evita complejidad de CORS con `credentials: 'include'`; la SPA es el único consumidor del token |
+| `authInterceptor` funcional (no clase) | Angular 17+ recomienda interceptores funcionales (`HttpInterceptorFn`); menor boilerplate que la clase `HttpInterceptor` |
+| `guestGuard` en `/login` | Evita que un usuario ya autenticado vea el login; lo redirige automáticamente a `/admin` |
+| `computed()` en `AdminPage.metricas` | Transforma el objeto `metrics` de la API en un array iterable con `@for`; se recalcula automáticamente si `resumen()` cambia |
+| URL dinámica en servicios (`resolverApiUrl()`) | En `localhost` apunta directo al backend; en producción usa `/api` (proxy Vercel) sin necesidad de rebuilds ni variables de entorno en el frontend |
 | `responseType: 'text'` en el servicio | Sin esta opción, HttpClient falla al parsear `application/xml` como JSON |
 | Estado de edición en el servicio (`_ordenEnEdicion`) | Alternativa simple a query params o un GET /ordenes/:id (que el backend no expone); el componente hace fallback con redirect si el estado se pierde por recarga |
 | `<pre><code>` sin innerHTML | Evita `DomSanitizer.bypassSecurityTrustHtml()`; el indentado del XML generado por xml2js se preserva de forma nativa con el elemento `<pre>` |
@@ -553,16 +814,33 @@ npm install --save-dev nodemon
 ### Probar la API con curl
 
 ```bash
-# Crear una orden
+# 1. Iniciar sesión y obtener token (en desarrollo usa fallback admin/admin1234)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin1234"}'
+# Guarda el token de la respuesta, ej: TOKEN=eyJ...
+
+# 2. Crear una orden (requiere token)
 curl -X POST http://localhost:3000/api/ordenes \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"cliente":"Ana López","objeto":"Placa","material":"Acrílico","parametros_laser":{"potencia":60,"velocidad":200},"precio_cop":45000}'
 
-# Listar todas las órdenes
-curl http://localhost:3000/api/ordenes
+# 3. Listar todas las órdenes
+curl http://localhost:3000/api/ordenes \
+  -H "Authorization: Bearer $TOKEN"
 
-# Obtener informe XML
-curl http://localhost:3000/api/informes/operacion
+# 4. Panel administrativo
+curl http://localhost:3000/api/admin/resumen \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Informe XML por materiales
+curl http://localhost:3000/api/informes/operacion \
+  -H "Authorization: Bearer $TOKEN"
+
+# 6. Informe XML listado de órdenes
+curl http://localhost:3000/api/informes/ordenes \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
