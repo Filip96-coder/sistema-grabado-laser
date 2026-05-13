@@ -1,0 +1,98 @@
+<div class="page admin-page">
+  <header class="page-header admin-hero">
+    <div>
+      <p class="hero-kicker">Panel administrativo</p>
+      <h1 class="page-title">Hola, {{ username }}</h1>
+      <p class="page-subtitle">
+        Desde acá controlás el pulso del negocio: volumen de órdenes, clientes activos y accesos
+        rápidos al corazón operativo.
+      </p>
+    </div>
+
+    <div class="hero-actions">
+      <a routerLink="/ordenes/nueva" class="btn btn-primary">+ Crear orden</a>
+      <a routerLink="/informes" class="btn btn-outline">Ver informes XML</a>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+
+  @if (cargando()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando el panel administrativo...</p>
+    </div>
+  } @else if (resumen(); as data) {
+    <section class="metrics-grid">
+      @for (metrica of metricas(); track metrica.etiqueta) {
+        <article class="metric-card">
+          <span class="metric-label">{{ metrica.etiqueta }}</span>
+          <strong class="metric-value">{{ metrica.valor }}</strong>
+        </article>
+      }
+
+      <article class="metric-card metric-card-money">
+        <span class="metric-label">Valor total facturado</span>
+        <strong class="metric-value">
+          {{ data.metrics.valor_total_cop | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}
+        </strong>
+      </article>
+    </section>
+
+    <section class="admin-grid">
+      <article class="admin-card quick-actions-card">
+        <div class="card-head">
+          <span class="card-kicker">Acciones rápidas</span>
+          <h2>Tomá control sin vueltas</h2>
+        </div>
+
+        <div class="quick-actions">
+          <a routerLink="/ordenes" class="action-tile">
+            <strong>Ver órdenes</strong>
+            <span>Revisá, editá o eliminá trabajos activos.</span>
+          </a>
+          <a routerLink="/ordenes/nueva" class="action-tile">
+            <strong>Registrar nueva orden</strong>
+            <span>Cargá un pedido nuevo con parámetros de grabado.</span>
+          </a>
+          <a routerLink="/informes" class="action-tile">
+            <strong>Auditar XML</strong>
+            <span>Inspeccioná `ordenes_por_material` y los bloques por cliente.</span>
+          </a>
+        </div>
+      </article>
+
+      <article class="admin-card timeline-card">
+        <div class="card-head">
+          <span class="card-kicker">Actividad reciente</span>
+          <h2>Últimas órdenes cargadas</h2>
+        </div>
+
+        <div class="timeline-list">
+          @for (orden of data.latest_orders; track orden.id) {
+            <article class="timeline-item">
+              <div>
+                <strong>{{ orden.cliente }}</strong>
+                <p>{{ orden.objeto }} · {{ orden.material }}</p>
+              </div>
+              <div class="timeline-meta">
+                <span
+                  class="badge"
+                  [class.badge-terminado]="orden.estado === 'Terminado'"
+                  [class.badge-pendiente]="orden.estado === 'Pendiente'"
+                >
+                  {{ orden.estado }}
+                </span>
+                <strong>{{
+                  orden.precio_cop | currency: 'COP' : 'symbol-narrow' : '1.0-0'
+                }}</strong>
+              </div>
+            </article>
+          }
+        </div>
+      </article>
+    </section>
+  }
+</div>

@@ -11,7 +11,7 @@
 
     <div class="header-actions hero-actions">
       @if (xmlActivo()) {
-        <button (click)="copiarXML()" class="btn btn-outline-primary">
+        <button (click)="copiarXML()" class="btn btn-outline">
           {{ copiado() ? '✓ Copiado' : 'Copiar XML activo' }}
         </button>
       }

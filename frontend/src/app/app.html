@@ -1,23 +1,48 @@
 <nav class="navbar">
-  <span class="navbar-brand">Grabado Láser</span>
-  <ul class="navbar-links">
-    <li>
-      <a
-        routerLink="/ordenes"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        Órdenes
-      </a>
-    </li>
-    <li>
-      <a routerLink="/ordenes/nueva" routerLinkActive="active"> + Nueva Orden </a>
-    </li>
+  <div class="navbar-brand-block">
+    <span class="navbar-brand">Grabado Láser</span>
+    <span class="navbar-context">Operación protegida para taller y reportes</span>
+  </div>
 
-    <li>
-      <a routerLink="/informes" routerLinkActive="active"> Informes XML </a>
-    </li>
-  </ul>
+  @if (auth.isAuthenticated()) {
+    <div class="navbar-right">
+      <ul class="navbar-links">
+        <li>
+          <a
+            routerLink="/admin"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            Admin
+          </a>
+        </li>
+        <li>
+          <a
+            routerLink="/ordenes"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            Órdenes
+          </a>
+        </li>
+        <li>
+          <a routerLink="/ordenes/nueva" routerLinkActive="active"> + Nueva Orden </a>
+        </li>
+        <li>
+          <a routerLink="/informes" routerLinkActive="active"> Informes XML </a>
+        </li>
+      </ul>
+
+      <div class="session-actions">
+        <span class="session-badge">Admin · {{ auth.getUsername() }}</span>
+        <button type="button" class="btn btn-outline navbar-logout" (click)="logout()">
+          Salir
+        </button>
+      </div>
+    </div>
+  } @else {
+    <a routerLink="/login" class="btn btn-primary navbar-login">Ingresar</a>
+  }
 </nav>
 
 <main class="main-content">

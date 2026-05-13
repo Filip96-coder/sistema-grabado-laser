@@ -1,0 +1,59 @@
+<div class="login-shell">
+  <section class="login-hero">
+    <p class="hero-kicker">Acceso administrativo</p>
+    <h1>Controlá pedidos, reportes y operación desde un solo lugar</h1>
+    <p class="hero-copy">
+      Ingresá con el usuario administrador para proteger órdenes, informes XML y el nuevo panel
+      `/admin`.
+    </p>
+
+    <div class="hero-points">
+      <article>
+        <strong>Órdenes protegidas</strong>
+        <span>El CRUD y los informes requieren sesión activa.</span>
+      </article>
+      <article>
+        <strong>Panel administrativo</strong>
+        <span>Vas a tener métricas rápidas y accesos directos para operar.</span>
+      </article>
+      <article>
+        <strong>UX clara</strong>
+        <span>La entrada mantiene el mismo nivel visual fuerte que `/informes`.</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="login-card">
+    <div class="login-card-header">
+      <p class="card-kicker">Iniciar sesión</p>
+      <h2>Entrar como admin</h2>
+      <p>Usá tu usuario y contraseña para desbloquear el sistema.</p>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert-error">{{ error() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="entrar()" class="login-form">
+      <div class="campo">
+        <label for="username">Usuario</label>
+        <input id="username" type="text" formControlName="username" placeholder="admin" />
+        @if (campoInvalido('username')) {
+          <span class="campo-error">El usuario es requerido</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" formControlName="password" placeholder="••••••••" />
+        @if (campoInvalido('password')) {
+          <span class="campo-error">La contraseña es requerida</span>
+        }
+      </div>
+
+      <button type="submit" class="btn btn-primary login-submit" [disabled]="cargando()">
+        {{ cargando() ? 'Validando acceso...' : 'Ingresar al panel' }}
+      </button>
+    </form>
+  </section>
+</div>
